@@ -468,7 +468,7 @@ public class KotoriPluginLoader extends Plugin
 		addToPluginToLoadList(pluginClassPathsToLoad, config.infernoChoice(), infoJsonObject.isPreventInferno(), "Inferno", 1);
 		//Load Sire Helper
 		addToPluginToLoadList(pluginClassPathsToLoad, config.sireHelperChoice(), infoJsonObject.isPreventSireHelper(), "Sire Helper", 2);
-		addToPluginToLoadList(pluginClassPathsToLoad, config.oaioswapperChoice(), infoJsonObject.isPreventSireHelper(), "oaioswapper", 2);
+		addToPluginToLoadList(pluginClassPathsToLoad, config.oAIOSwapperChoice(), infoJsonObject.isPreventSireHelper(), "oaioswapper", 2);
 
 		return pluginClassPathsToLoad;
 	}

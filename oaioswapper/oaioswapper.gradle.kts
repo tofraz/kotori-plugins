@@ -28,11 +28,10 @@ version = "1.0.0"
 project.extra["PluginName"] = "<html><font color=#6b8af6>o</font>AIO Swapper</html>" // This is the name that is used in the external plugin manager panel
 project.extra["PluginDescription"] = "A simple gear swapping plugin" // This is the description that is used in the external plugin manager panel
 project.extra["PluginPackageId"] = "oaioswapper" // This is the plugin package folder after the default group package.
-project.extra["PluginMainClassName"] = "OAIOSwapperPlugin" // This is the plugin's main class which extends Plugin
+project.extra["PluginMainClassName"] = "oAIOSwapperPlugin" // This is the plugin's main class which extends Plugin
 
 dependencies {
     compileOnly(project(":kotoriutils"))
-    testImplementation(project(mapOf("path" to ":kotoriutils")))
 }
 
 tasks {

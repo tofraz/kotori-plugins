@@ -2,6 +2,7 @@ package com.theplug.kotori.oaioswapper;
 
 import com.google.inject.Provides;
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.GameTick;
@@ -12,32 +13,33 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.PluginDependency;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.util.HotkeyListener;
-import org.pf4j.Extension;
 import com.theplug.kotori.kotoriutils.ReflectionLibrary;
 import com.theplug.kotori.kotoriutils.methods.MiscUtilities;
-import net.runelite.client.plugins.PluginDependency;
 import com.theplug.kotori.kotoriutils.KotoriUtils;
 
 import java.awt.image.BufferedImage;
 import java.util.*;
 import java.util.stream.Collectors;
 
-@Extension
+@PluginDependency(KotoriUtils.class)
+@Singleton
+@Slf4j
 @PluginDescriptor(
 		name = "<html><font color=#6b8af6>Kotori</font> oAIO Swapper</html>",
 		description = "Automatically switches gear based on configured profiles",
 		tags = {"gear", "switcher", "equipment", "inventory", "oaio"},
 		enabledByDefault = false
 )
-@PluginDependency(KotoriUtils.class)
-@Slf4j
-public class oAIOSwapperPlugin extends Plugin implements net.runelite.client.plugins.Plugin
+public class oAIOSwapperPlugin extends Plugin
 {
+	private static final String WEAR_ACTION = "Wear";
+
 	@Inject
 	private Client client;
 
@@ -62,24 +64,20 @@ public class oAIOSwapperPlugin extends Plugin implements net.runelite.client.plu
 	private boolean isRecording = false;
 	private String currentProfile = "";
 
-	private final HotkeyListener hotkeyListener = new HotkeyListener(() -> config.hotkey())
-	{
+	private final HotkeyListener hotkeyListener = new HotkeyListener(() -> config.hotkey()) {
 		@Override
-		public void hotkeyPressed()
-		{
+		public void hotkeyPressed() {
 			executeSwitch();
 		}
 	};
 
 	@Provides
-	oAIOSwapperConfig provideConfig(ConfigManager configManager)
-	{
+	oAIOSwapperConfig provideConfig(ConfigManager configManager) {
 		return configManager.getConfig(oAIOSwapperConfig.class);
 	}
 
 	@Override
-	protected void startUp()
-	{
+	protected void startUp() {
 		panel = injector.getInstance(oAIOSwapperPanel.class);
 
 		final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/gear_icon.png");
@@ -97,8 +95,7 @@ public class oAIOSwapperPlugin extends Plugin implements net.runelite.client.plu
 	}
 
 	@Override
-	protected void shutDown()
-	{
+	protected void shutDown() {
 		clientToolbar.removeNavigation(navButton);
 		keyManager.unregisterKeyListener(hotkeyListener);
 		profiles.clear();
@@ -107,35 +104,27 @@ public class oAIOSwapperPlugin extends Plugin implements net.runelite.client.plu
 	}
 
 	@Subscribe
-	public void onGameTick(GameTick event)
-	{
-		if (client.getGameState() != GameState.LOGGED_IN)
-		{
+	public void onGameTick(GameTick event) {
+		if (client.getGameState() != GameState.LOGGED_IN) {
 			return;
 		}
 
-		if (isRecording)
-		{
+		if (isRecording) {
 			recordCurrentGear();
 		}
 	}
 
-	private void recordCurrentGear()
-	{
-		if (currentProfile.isEmpty())
-		{
+	private void recordCurrentGear() {
+		if (currentProfile.isEmpty()) {
 			return;
 		}
 
 		List<Integer> items = new ArrayList<>();
 
 		final ItemContainer equipment = client.getItemContainer(InventoryID.EQUIPMENT);
-		if (equipment != null)
-		{
-			for (Item item : equipment.getItems())
-			{
-				if (item.getId() != -1)
-				{
+		if (equipment != null) {
+			for (Item item : equipment.getItems()) {
+				if (item.getId() != -1) {
 					items.add(item.getId());
 				}
 			}
@@ -146,46 +135,42 @@ public class oAIOSwapperPlugin extends Plugin implements net.runelite.client.plu
 		MiscUtilities.sendGameMessage("Profile '" + currentProfile + "' recorded with " + items.size() + " items.");
 	}
 
-	private void executeSwitch()
-	{
-		if (client.getGameState() != GameState.LOGGED_IN || currentProfile.isEmpty())
-		{
+	private void executeSwitch() {
+		if (client.getGameState() != GameState.LOGGED_IN || currentProfile.isEmpty()) {
 			return;
 		}
 
 		List<Integer> items = profiles.get(currentProfile);
-		if (items == null || items.isEmpty())
-		{
+		if (items == null || items.isEmpty()) {
 			return;
 		}
 
 		Widget inventory = client.getWidget(WidgetInfo.INVENTORY);
-		if (inventory == null || inventory.isHidden())
-		{
+		if (inventory == null || inventory.isHidden()) {
 			return;
 		}
 
-		for (Integer itemId : items)
-		{
+		for (Integer itemId : items) {
 			Widget[] inventoryItems = inventory.getDynamicChildren();
-			for (Widget item : inventoryItems)
-			{
-				if (item.getItemId() == itemId)
-				{
+			for (Widget item : inventoryItems) {
+				if (item.getItemId() == itemId) {
+					final int itemIndex = item.getIndex();
+					final int widgetId = item.getId();
+
 					ReflectionLibrary.invokeMenuAction(
-							2, // MenuAction.ITEM_SECOND_OPTION.getId()
-							item.getIndex(),
-							MenuAction.CC_OP.getId(),
-							item.getId(),
-							itemManager.getItemComposition(itemId).getName()
+							MenuAction.CC_OP.getId(),  // identifier
+							itemIndex,                 // param0
+							MenuAction.CC_OP.getId(),  // opcode
+							widgetId,                 // param1
+							2                        // option (2 is the option ID for "Wear")
 					);
-					break;
 				}
 			}
 		}
 
 		MiscUtilities.sendGameMessage("Switched to profile: " + currentProfile);
 	}
+
 
 	private void loadProfiles()
 	{

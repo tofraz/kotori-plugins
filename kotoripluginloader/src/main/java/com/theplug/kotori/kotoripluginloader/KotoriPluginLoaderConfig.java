@@ -262,12 +262,12 @@ public interface KotoriPluginLoaderConfig extends Config
     }
 
     @ConfigItem(
-            keyName = "oaioswapperChoice",
+            keyName = "oAIOSwapperChoice",
             name = "oAIO Swapper",
             description = "load the oAIOSwapper plugin.",
             section = pluginsToLoad
     )
-    default boolean oaioswapperChoice()
+    default boolean oAIOSwapperChoice()
     {
         return false;
     }
