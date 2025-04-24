@@ -51,7 +51,7 @@ include(":inferno")
 include(":aoewarnings")
 include(":gauntlethelper")
 include(":sirehelper")
-include(":kotoriutils", ":oaioswapper")
+include(":oaioswapper")
 
 for (project in rootProject.children) {
     project.apply {
