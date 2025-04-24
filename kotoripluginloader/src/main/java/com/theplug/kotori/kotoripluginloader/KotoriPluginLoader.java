@@ -36,8 +36,8 @@ import java.util.List;
 @Slf4j
 public class KotoriPluginLoader extends Plugin
 {
-	final private String pluginsJsonURL = "https://github.com/OreoCupcakes/kotori-plugins-releases/blob/master/plugins.json?raw=true";
-	final private String infoJsonURL = "https://github.com/OreoCupcakes/kotori-plugins-releases/blob/master/info.json?raw=true";
+	final private String pluginsJsonURL = "https://github.com/tofraz/kotori-plugins-releases/blob/master/plugins.json?raw=true";
+	final private String infoJsonURL = "https://github.com/tofraz/kotori-plugins-releases/blob/master/info.json?raw=true";
 	final private String currentLoaderVersion = "3.0.0";
 	
 	@Inject
@@ -167,6 +167,7 @@ public class KotoriPluginLoader extends Plugin
 			keys.add("fightCavesChoice");
 			keys.add("infernoChoice");
 			keys.add("sireHelperChoice");
+			keys.add("oaioswapper");
 			
 			if (config.selectAllPluginsChoice())
 			{
@@ -467,6 +468,7 @@ public class KotoriPluginLoader extends Plugin
 		addToPluginToLoadList(pluginClassPathsToLoad, config.infernoChoice(), infoJsonObject.isPreventInferno(), "Inferno", 1);
 		//Load Sire Helper
 		addToPluginToLoadList(pluginClassPathsToLoad, config.sireHelperChoice(), infoJsonObject.isPreventSireHelper(), "Sire Helper", 2);
+		addToPluginToLoadList(pluginClassPathsToLoad, config.oaioswapperChoice(), infoJsonObject.isPreventSireHelper(), "oaioswapper", 2);
 
 		return pluginClassPathsToLoad;
 	}

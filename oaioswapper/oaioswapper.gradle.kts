@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Owain van Brakel <https:github.com/Owain94>
+ * Copyright (c) 2019 Owain van Brakel <https://github.com/Owain94>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,41 +23,28 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-rootProject.name = "kotori-ported-plugins"
+version = "1.0.0"
 
-include(":alchemicalhelper")
-include(":cerberushelper")
-include(":dagannothhelper")
-include(":demonicgorillas")
-include(":effecttimers")
-include(":hallowedhelper")
-include(":houseoverlay")
-include(":javaexample")
-include(":kotoripluginloader")
-include(":kotoriutils")
-include(":multiindicators")
-include(":nex")
-include(":vorkathoverlay")
-include(":zulrahoverlay")
-include(":grotesqueguardians")
-include(":specbar")
-include(":templetrekking")
-include(":tarnslair")
-include(":nightmare")
-include(":gwdhelper")
-include(":kotoritest")
-include(":fightcaves")
-include(":inferno")
-include(":aoewarnings")
-include(":gauntlethelper")
-include(":sirehelper")
-include(":kotoriutils", ":oaioswapper")
+project.extra["PluginName"] = "<html><font color=#6b8af6>o</font>AIO Swapper</html>" // This is the name that is used in the external plugin manager panel
+project.extra["PluginDescription"] = "A simple gear swapping plugin" // This is the description that is used in the external plugin manager panel
+project.extra["PluginPackageId"] = "oaioswapper" // This is the plugin package folder after the default group package.
+project.extra["PluginMainClassName"] = "OAIOSwapperPlugin" // This is the plugin's main class which extends Plugin
 
-for (project in rootProject.children) {
-    project.apply {
-        projectDir = file(name)
-        buildFileName = "$name.gradle.kts"
-        require(projectDir.isDirectory) { "Project '${project.path} must have a $projectDir directory" }
-        require(buildFile.isFile) { "Project '${project.path} must have a $buildFile build script" }
+dependencies {
+    compileOnly(project(":kotoriutils"))
+    testImplementation(project(mapOf("path" to ":kotoriutils")))
+}
+
+tasks {
+    jar {
+        manifest {
+            attributes(mapOf(
+                "Plugin-Version" to project.version,
+                "Plugin-Id" to nameToId(project.extra["PluginName"] as String),
+                "Plugin-Provider" to project.extra["PluginProvider"],
+                "Plugin-Description" to project.extra["PluginDescription"],
+                "Plugin-License" to project.extra["PluginLicense"]
+            ))
+        }
     }
 }

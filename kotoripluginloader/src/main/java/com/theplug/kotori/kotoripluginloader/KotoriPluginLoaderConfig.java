@@ -16,7 +16,7 @@ public interface KotoriPluginLoaderConfig extends Config
             position = 0,
             closedByDefault = true
     )
-    String versionInfo = "Loader Version";
+    String versionInfo = "3.0.0";
 
     @ConfigSection(
             name = "Loader Settings",
@@ -257,6 +257,17 @@ public interface KotoriPluginLoaderConfig extends Config
             section = pluginsToLoad
     )
     default boolean sireHelperChoice()
+    {
+        return false;
+    }
+
+    @ConfigItem(
+            keyName = "oaioswapperChoice",
+            name = "oAIO Swapper",
+            description = "load the oAIOSwapper plugin.",
+            section = pluginsToLoad
+    )
+    default boolean oaioswapperChoice()
     {
         return false;
     }

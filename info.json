@@ -26,5 +26,6 @@
   "preventAoeWarnings": "false",
   "preventFightCaves": "false",
   "preventInferno": "false",
+  "preventoAIOSwapper": "false",
   "preventSireHelper": "false"
 }
