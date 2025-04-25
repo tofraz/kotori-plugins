@@ -11,6 +11,16 @@ public interface oAIOSwapperConfig extends Config
 	String GROUP = "oaioswapper";
 
 	@ConfigItem(
+			keyName = "actionsPerTick",
+			name = "Actions Per Tick",
+			description = "Number of actions to perform per game tick",
+			position = 1
+	)
+	default int actionsPerTick() {
+		return 5;
+	}
+
+	@ConfigItem(
 			keyName = "hotkey",
 			name = "Switch Gear Hotkey",
 			description = "Hotkey to execute the selected gear switch profile",

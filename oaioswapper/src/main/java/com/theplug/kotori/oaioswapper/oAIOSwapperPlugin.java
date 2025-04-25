@@ -8,8 +8,6 @@ import javax.swing.*;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.GameTick;
-import net.runelite.api.widgets.Widget;
-import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
@@ -21,10 +19,11 @@ import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.util.HotkeyListener;
-import com.theplug.kotori.kotoriutils.ReflectionLibrary;
 import com.theplug.kotori.kotoriutils.methods.MiscUtilities;
 import com.theplug.kotori.kotoriutils.KotoriUtils;
+import com.theplug.kotori.kotoriutils.methods.*;
 import net.runelite.client.callback.ClientThread;
+
 
 import java.awt.image.BufferedImage;
 import java.util.*;
@@ -164,39 +163,15 @@ public class oAIOSwapperPlugin extends Plugin
 				return;
 			}
 
-			Widget inventory = client.getWidget(WidgetInfo.INVENTORY);
-			if (inventory == null || inventory.isHidden()) {
-				return;
+			// Convert List<Integer> to int[]
+			int[] itemsArray = items.stream().mapToInt(i -> i).toArray();
+
+			// Use InventoryInteractions.equipItems with the items array and config's actions per tick
+			boolean finishedEquipping = InventoryInteractions.equipItems(itemsArray, config.actionsPerTick());
+
+			if (finishedEquipping) {
+				MiscUtilities.sendGameMessage("Switched to profile: " + currentProfile);
 			}
-
-			for (Integer itemId : items) {
-				Widget[] inventoryItems = inventory.getDynamicChildren();
-				for (Widget item : inventoryItems) {
-					if (item.getItemId() == itemId) {
-						final int itemIndex = item.getIndex();
-						final int widgetId = item.getId();
-
-						ReflectionLibrary.invokeMenuAction(
-								MenuAction.CC_OP.getId(),  // identifier
-								itemIndex,                 // param0
-								MenuAction.CC_OP.getId(),  // opcode
-								widgetId,                 // param1
-								2                        // option (2 is the option ID for "Wear")
-						);
-
-						// Add delay between switches if configured
-						if (config.switchDelay() > 0) {
-							try {
-								Thread.sleep(config.switchDelay());
-							} catch (InterruptedException e) {
-								Thread.currentThread().interrupt();
-							}
-						}
-					}
-				}
-			}
-
-			MiscUtilities.sendGameMessage("Switched to profile: " + currentProfile);
 		});
 	}
 
