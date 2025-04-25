@@ -13,8 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 @Slf4j
-public class oAIOSwapperPanel extends PluginPanel
-{
+public class oAIOSwapperPanel extends PluginPanel {
     private final oAIOSwapperPlugin plugin;
     private final oAIOSwapperConfig config;
 
@@ -26,9 +25,10 @@ public class oAIOSwapperPanel extends PluginPanel
     private final JButton deleteButton;
     private final JButton saveEquipmentButton;
 
+    private Keybind currentHotkey = Keybind.NOT_SET;
+
     @Inject
-    public oAIOSwapperPanel(oAIOSwapperPlugin plugin, oAIOSwapperConfig config)
-    {
+    public oAIOSwapperPanel(oAIOSwapperPlugin plugin, oAIOSwapperConfig config) {
         this.plugin = plugin;
         this.config = config;
 
@@ -70,11 +70,11 @@ public class oAIOSwapperPanel extends PluginPanel
         // Hotkey Button
         JPanel hotkeyPanel = new JPanel(new BorderLayout());
         hotkeyPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        hotkeyButton = new JButton("Set Hotkey: " + config.hotkey().toString());
+        hotkeyButton = new JButton("Set Hotkey: None");
         hotkeyButton.setMaximumSize(new Dimension(PANEL_WIDTH - 20, 25));
         hotkeyButton.addActionListener(e -> startHotkeyInput());
 
-        JLabel hotkeyLabel = new JLabel("Hotkey:");
+        JLabel hotkeyLabel = new JLabel("Profile Hotkey:");
         hotkeyLabel.setForeground(Color.WHITE);
         hotkeyPanel.add(hotkeyLabel, BorderLayout.NORTH);
         hotkeyPanel.add(hotkeyButton, BorderLayout.CENTER);
@@ -105,8 +105,7 @@ public class oAIOSwapperPanel extends PluginPanel
         // Profile dropdown listener
         profileDropdown.addActionListener(e -> {
             String selected = (String) profileDropdown.getSelectedItem();
-            if (selected != null)
-            {
+            if (selected != null) {
                 plugin.setCurrentProfile(selected);
                 loadProfileData(selected);
             }
@@ -116,113 +115,97 @@ public class oAIOSwapperPanel extends PluginPanel
         loadProfiles();
     }
 
-    private void startHotkeyInput()
-    {
+    private void startHotkeyInput() {
         hotkeyButton.setText("Press any key...");
         hotkeyButton.setForeground(Color.WHITE);
-        // The actual key listening is handled by the plugin's KeyManager
     }
 
-    private void loadProfiles()
-    {
-        Map<String, List<Integer>> profiles = plugin.getProfiles();
+    private void loadProfiles() {
+        Map<String, Profile> profiles = plugin.getProfiles();
         profileDropdown.removeAllItems();
-        for (String profile : profiles.keySet())
-        {
+        for (String profile : profiles.keySet()) {
             profileDropdown.addItem(profile);
         }
 
-        String selectedProfile = config.selectedProfile();
-        if (selectedProfile != null && !selectedProfile.isEmpty())
-        {
-            profileDropdown.setSelectedItem(selectedProfile);
+        String selectedProfile = (String) profileDropdown.getSelectedItem();
+        if (selectedProfile != null && !selectedProfile.isEmpty()) {
             loadProfileData(selectedProfile);
         }
     }
 
-    private void loadProfileData(String profileName)
-    {
-        Map<String, List<Integer>> profiles = plugin.getProfiles();
-        List<Integer> items = profiles.get(profileName);
-        if (items != null)
-        {
-            String itemIds = items.stream()
+    private void loadProfileData(String profileName) {
+        Map<String, Profile> profiles = plugin.getProfiles();
+        Profile profile = profiles.get(profileName);
+        if (profile != null) {
+            String itemIds = profile.getItems().stream()
                     .map(String::valueOf)
                     .collect(java.util.stream.Collectors.joining(", "));
             itemIdsInput.setText(itemIds);
-        }
-        else
-        {
+            currentHotkey = profile.getHotkey();
+            hotkeyButton.setText("Set Hotkey: " + (currentHotkey != null ? currentHotkey.toString() : "None"));
+        } else {
             itemIdsInput.setText("");
+            currentHotkey = Keybind.NOT_SET;
+            hotkeyButton.setText("Set Hotkey: None");
         }
     }
 
-    private void createNewProfile()
-    {
+    private void createNewProfile() {
         String name = JOptionPane.showInputDialog(this, "Enter profile name:");
-        if (name != null && !name.isEmpty())
-        {
+        if (name != null && !name.isEmpty()) {
             profileDropdown.addItem(name);
             profileDropdown.setSelectedItem(name);
             plugin.setCurrentProfile(name);
+            currentHotkey = Keybind.NOT_SET;
+            hotkeyButton.setText("Set Hotkey: None");
             itemIdsInput.setText("");
         }
     }
 
-    private void saveCurrentProfile()
-    {
+    private void saveCurrentProfile() {
         String currentProfile = (String) profileDropdown.getSelectedItem();
-        if (currentProfile != null && !currentProfile.isEmpty())
-        {
+        if (currentProfile != null && !currentProfile.isEmpty()) {
             List<Integer> items = java.util.Arrays.stream(itemIdsInput.getText().split(","))
                     .map(String::trim)
                     .filter(s -> !s.isEmpty())
                     .map(Integer::parseInt)
                     .collect(java.util.stream.Collectors.toList());
 
-            plugin.getProfiles().put(currentProfile, items);
-            plugin.saveProfiles();
+            plugin.updateProfile(currentProfile, items, currentHotkey);
             loadProfiles();
         }
     }
 
-    private void deleteCurrentProfile()
-    {
+    private void deleteCurrentProfile() {
         String currentProfile = (String) profileDropdown.getSelectedItem();
-        if (currentProfile != null)
-        {
+        if (currentProfile != null) {
             int confirm = JOptionPane.showConfirmDialog(this,
                     "Are you sure you want to delete profile: " + currentProfile + "?",
                     "Confirm Delete", JOptionPane.YES_NO_OPTION);
 
-            if (confirm == JOptionPane.YES_OPTION)
-            {
+            if (confirm == JOptionPane.YES_OPTION) {
                 plugin.deleteProfile(currentProfile);
                 loadProfiles();
             }
         }
     }
 
-    private void saveCurrentEquipment()
-    {
+    private void saveCurrentEquipment() {
         String currentProfile = (String) profileDropdown.getSelectedItem();
-        if (currentProfile != null && !currentProfile.isEmpty())
-        {
+        if (currentProfile != null && !currentProfile.isEmpty()) {
             plugin.startRecording(currentProfile);
         }
     }
 
-    public void updateItemIds(String itemIds)
-    {
+    public void updateItemIds(String itemIds) {
         SwingUtilities.invokeLater(() -> {
             itemIdsInput.setText(itemIds);
         });
     }
 
-    public void updateHotkeyText(String hotkeyText)
-    {
-        SwingUtilities.invokeLater(() -> {
-            hotkeyButton.setText("Set Hotkey: " + hotkeyText);
-        });
+    public void setHotkey(Keybind hotkey) {
+        this.currentHotkey = hotkey;
+        hotkeyButton.setText("Set Hotkey: " + (hotkey != null ? hotkey.toString() : "None"));
+        saveCurrentProfile();
     }
 }

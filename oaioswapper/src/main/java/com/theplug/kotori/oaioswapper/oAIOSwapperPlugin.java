@@ -1,31 +1,33 @@
 package com.theplug.kotori.oaioswapper;
 
 import com.google.inject.Provides;
-import javax.inject.Inject;
-import javax.inject.Singleton;
-import javax.swing.*;
-
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
+import com.theplug.kotori.kotoriutils.KotoriUtils;
+import com.theplug.kotori.kotoriutils.methods.*;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.config.Keybind;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.input.KeyManager;
 import net.runelite.client.plugins.Plugin;
-import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginDependency;
+import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
-import net.runelite.client.util.ImageUtil;
-import net.runelite.client.input.KeyManager;
 import net.runelite.client.util.HotkeyListener;
-import com.theplug.kotori.kotoriutils.methods.MiscUtilities;
-import com.theplug.kotori.kotoriutils.KotoriUtils;
-import com.theplug.kotori.kotoriutils.methods.*;
+import net.runelite.client.util.ImageUtil;
 import net.runelite.client.callback.ClientThread;
 
-
+import javax.inject.Inject;
+import javax.inject.Singleton;
+import javax.swing.*;
 import java.awt.image.BufferedImage;
+import java.lang.reflect.Type;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -38,8 +40,7 @@ import java.util.stream.Collectors;
 		tags = {"gear", "switcher", "equipment", "inventory", "oaio"},
 		enabledByDefault = false
 )
-public class oAIOSwapperPlugin extends Plugin
-{
+public class oAIOSwapperPlugin extends Plugin {
 	private static final String WEAR_ACTION = "Wear";
 
 	@Inject
@@ -65,16 +66,11 @@ public class oAIOSwapperPlugin extends Plugin
 
 	private oAIOSwapperPanel panel;
 	private NavigationButton navButton;
-	private final Map<String, List<Integer>> profiles = new HashMap<>();
+	private final Map<String, Profile> profiles = new HashMap<>();
+	private final Map<String, HotkeyListener> hotkeyListeners = new HashMap<>();
 	private boolean isRecording = false;
 	private String currentProfile = "";
-
-	private final HotkeyListener hotkeyListener = new HotkeyListener(() -> config.hotkey()) {
-		@Override
-		public void hotkeyPressed() {
-			executeSwitch();
-		}
-	};
+	private final Gson GSON = new GsonBuilder().create();
 
 	@Provides
 	oAIOSwapperConfig provideConfig(ConfigManager configManager) {
@@ -95,15 +91,15 @@ public class oAIOSwapperPlugin extends Plugin
 				.build();
 
 		clientToolbar.addNavigation(navButton);
-		keyManager.registerKeyListener(hotkeyListener);
 		loadProfiles();
+		registerAllHotkeyListeners();
 	}
 
 	@Override
 	protected void shutDown() {
 		clientToolbar.removeNavigation(navButton);
-		keyManager.unregisterKeyListener(hotkeyListener);
-		saveProfiles(); // Save profiles before shutting down
+		unregisterAllHotkeyListeners();
+		saveProfiles();
 		profiles.clear();
 		panel = null;
 		navButton = null;
@@ -117,7 +113,7 @@ public class oAIOSwapperPlugin extends Plugin
 
 		if (isRecording) {
 			recordCurrentGear();
-			isRecording = false; // Stop recording after one tick
+			isRecording = false;
 		}
 	}
 
@@ -137,11 +133,17 @@ public class oAIOSwapperPlugin extends Plugin
 			}
 		}
 
-		profiles.put(currentProfile, items);
+		Profile profile = profiles.get(currentProfile);
+		if (profile == null) {
+			profile = new Profile(currentProfile, items, Keybind.NOT_SET);
+		} else {
+			profile.setItems(items);
+		}
+		profiles.put(currentProfile, profile);
+
 		saveProfiles();
 		MiscUtilities.sendGameMessage("Profile '" + currentProfile + "' recorded with " + items.size() + " items.");
 
-		// Update the panel with the new items
 		if (panel != null) {
 			SwingUtilities.invokeLater(() -> {
 				String itemIds = items.stream()
@@ -152,68 +154,80 @@ public class oAIOSwapperPlugin extends Plugin
 		}
 	}
 
-	private void executeSwitch() {
+	private void executeSwitch(String profileName) {
 		clientThread.invoke(() -> {
-			if (client.getGameState() != GameState.LOGGED_IN || currentProfile.isEmpty()) {
+			if (client.getGameState() != GameState.LOGGED_IN) {
 				return;
 			}
 
-			List<Integer> items = profiles.get(currentProfile);
-			if (items == null || items.isEmpty()) {
+			Profile profile = profiles.get(profileName);
+			if (profile == null || profile.getItems() == null || profile.getItems().isEmpty()) {
 				return;
 			}
 
-			// Convert List<Integer> to int[]
-			int[] itemsArray = items.stream().mapToInt(i -> i).toArray();
-
-			// Use InventoryInteractions.equipItems with the items array and config's actions per tick
+			int[] itemsArray = profile.getItems().stream().mapToInt(i -> i).toArray();
 			boolean finishedEquipping = InventoryInteractions.equipItems(itemsArray, config.actionsPerTick());
 
 			if (finishedEquipping) {
-				MiscUtilities.sendGameMessage("Switched to profile: " + currentProfile);
+				MiscUtilities.sendGameMessage("Switched to profile: " + profileName);
 			}
 		});
 	}
 
-	private void loadProfiles() {
-		String profileData = configManager.getConfiguration(oAIOSwapperConfig.GROUP, "profiles");
-		if (profileData != null && !profileData.isEmpty()) {
-			String[] profileEntries = profileData.split(";");
-			for (String entry : profileEntries) {
-				String[] parts = entry.split(":");
-				if (parts.length == 2) {
-					String name = parts[0];
-					List<Integer> items = Arrays.stream(parts[1].split(","))
-							.map(Integer::parseInt)
-							.collect(Collectors.toList());
-					profiles.put(name, items);
+	private void registerAllHotkeyListeners() {
+		for (Profile profile : profiles.values()) {
+			registerHotkeyListener(profile);
+		}
+	}
+
+	private void unregisterAllHotkeyListeners() {
+		for (HotkeyListener listener : hotkeyListeners.values()) {
+			keyManager.unregisterKeyListener(listener);
+		}
+		hotkeyListeners.clear();
+	}
+
+	private void registerHotkeyListener(Profile profile) {
+		if (hotkeyListeners.containsKey(profile.getName())) {
+			keyManager.unregisterKeyListener(hotkeyListeners.get(profile.getName()));
+		}
+
+		if (profile.getHotkey() != null) {
+			HotkeyListener hotkeyListener = new HotkeyListener(() -> profile.getHotkey()) {
+				@Override
+				public void hotkeyPressed() {
+					executeSwitch(profile.getName());
 				}
-			}
+			};
 
-			// Load the previously selected profile
-			String selectedProfile = config.selectedProfile();
-			if (selectedProfile != null && !selectedProfile.isEmpty()) {
-				currentProfile = selectedProfile;
-			}
+			hotkeyListeners.put(profile.getName(), hotkeyListener);
+			keyManager.registerKeyListener(hotkeyListener);
+		}
+	}
 
-			MiscUtilities.sendGameMessage("Loaded " + profiles.size() + " gear profiles");
+	private void loadProfiles() {
+		String json = configManager.getConfiguration(oAIOSwapperConfig.GROUP, "profilesv2");
+		if (json != null && !json.isEmpty()) {
+			try {
+				Type type = new TypeToken<Map<String, Profile>>(){}.getType();
+				Map<String, Profile> loadedProfiles = GSON.fromJson(json, type);
+				profiles.putAll(loadedProfiles);
+				registerAllHotkeyListeners();
+
+				MiscUtilities.sendGameMessage("Loaded " + profiles.size() + " gear profiles");
+			} catch (Exception e) {
+				log.error("Error loading profiles", e);
+			}
 		}
 	}
 
 	public void saveProfiles() {
-		StringBuilder sb = new StringBuilder();
-		for (Map.Entry<String, List<Integer>> entry : profiles.entrySet()) {
-			sb.append(entry.getKey())
-					.append(":")
-					.append(entry.getValue().stream()
-							.map(String::valueOf)
-							.collect(Collectors.joining(",")))
-					.append(";");
+		try {
+			String json = GSON.toJson(profiles);
+			configManager.setConfiguration(oAIOSwapperConfig.GROUP, "profilesv2", json);
+		} catch (Exception e) {
+			log.error("Error saving profiles", e);
 		}
-		configManager.setConfiguration(oAIOSwapperConfig.GROUP, "profiles", sb.toString());
-
-		// Save the currently selected profile
-		configManager.setConfiguration(oAIOSwapperConfig.GROUP, "selectedProfile", currentProfile);
 	}
 
 	public void startRecording(String profileName) {
@@ -222,12 +236,17 @@ public class oAIOSwapperPlugin extends Plugin
 		MiscUtilities.sendGameMessage("Recording profile: " + profileName);
 	}
 
-	public Map<String, List<Integer>> getProfiles() {
+	public Map<String, Profile> getProfiles() {
 		return profiles;
 	}
 
 	public void deleteProfile(String name) {
-		profiles.remove(name);
+		Profile profile = profiles.remove(name);
+		if (profile != null && hotkeyListeners.containsKey(name)) {
+			keyManager.unregisterKeyListener(hotkeyListeners.get(name));
+			hotkeyListeners.remove(name);
+		}
+
 		if (currentProfile.equals(name)) {
 			currentProfile = "";
 		}
@@ -237,14 +256,12 @@ public class oAIOSwapperPlugin extends Plugin
 
 	public void setCurrentProfile(String name) {
 		currentProfile = name;
-		configManager.setConfiguration(oAIOSwapperConfig.GROUP, "selectedProfile", name);
 	}
 
-	// Add this method to support the panel's item ID updates
-	public void updateProfileItems(String profileName, List<Integer> items) {
-		if (profileName != null && !profileName.isEmpty()) {
-			profiles.put(profileName, items);
-			saveProfiles();
-		}
+	public void updateProfile(String name, List<Integer> items, Keybind hotkey) {
+		Profile profile = new Profile(name, items, hotkey);
+		profiles.put(name, profile);
+		registerHotkeyListener(profile);
+		saveProfiles();
 	}
 }
