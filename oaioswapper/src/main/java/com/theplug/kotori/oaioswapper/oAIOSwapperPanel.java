@@ -4,18 +4,24 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.config.Keybind;
+import net.runelite.client.input.KeyListener;
+import net.runelite.client.input.KeyManager;
 
 import javax.inject.Inject;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.KeyEvent;
 import java.util.List;
 import java.util.Map;
 
 @Slf4j
-public class oAIOSwapperPanel extends PluginPanel {
+public class oAIOSwapperPanel extends PluginPanel implements KeyListener {
     private final oAIOSwapperPlugin plugin;
     private final oAIOSwapperConfig config;
+
+    @Inject
+    private KeyManager keyManager;
 
     private final JComboBox<String> profileDropdown;
     private final JTextArea itemIdsInput;
@@ -26,6 +32,7 @@ public class oAIOSwapperPanel extends PluginPanel {
     private final JButton saveEquipmentButton;
 
     private Keybind currentHotkey = Keybind.NOT_SET;
+    private boolean listeningForHotkey = false;
 
     @Inject
     public oAIOSwapperPanel(oAIOSwapperPlugin plugin, oAIOSwapperConfig config) {
@@ -116,8 +123,40 @@ public class oAIOSwapperPanel extends PluginPanel {
     }
 
     private void startHotkeyInput() {
-        hotkeyButton.setText("Press any key...");
-        hotkeyButton.setForeground(Color.WHITE);
+        if (!listeningForHotkey) {
+            listeningForHotkey = true;
+            hotkeyButton.setText("Press any key...");
+            hotkeyButton.setForeground(Color.WHITE);
+            keyManager.registerKeyListener(this);
+        }
+    }
+
+    @Override
+    public void keyTyped(KeyEvent e) {
+    }
+
+    @Override
+    public void keyPressed(KeyEvent e) {
+        if (listeningForHotkey) {
+            int modifier = e.getModifiersEx();
+            int keyCode = e.getKeyCode();
+
+            if (keyCode != KeyEvent.VK_ESCAPE) {
+                currentHotkey = new Keybind(keyCode, modifier);
+                setHotkey(currentHotkey);
+            } else {
+                currentHotkey = Keybind.NOT_SET;
+                setHotkey(currentHotkey);
+            }
+
+            listeningForHotkey = false;
+            keyManager.unregisterKeyListener(this);
+            e.consume();
+        }
+    }
+
+    @Override
+    public void keyReleased(KeyEvent e) {
     }
 
     private void loadProfiles() {
