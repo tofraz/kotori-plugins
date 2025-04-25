@@ -3,6 +3,8 @@ package com.theplug.kotori.oaioswapper;
 import com.google.inject.Provides;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import javax.swing.*;
+
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.GameTick;
@@ -98,6 +100,7 @@ public class oAIOSwapperPlugin extends Plugin
 	protected void shutDown() {
 		clientToolbar.removeNavigation(navButton);
 		keyManager.unregisterKeyListener(hotkeyListener);
+		saveProfiles(); // Save profiles before shutting down
 		profiles.clear();
 		panel = null;
 		navButton = null;
@@ -111,6 +114,7 @@ public class oAIOSwapperPlugin extends Plugin
 
 		if (isRecording) {
 			recordCurrentGear();
+			isRecording = false; // Stop recording after one tick
 		}
 	}
 
@@ -133,6 +137,16 @@ public class oAIOSwapperPlugin extends Plugin
 		profiles.put(currentProfile, items);
 		saveProfiles();
 		MiscUtilities.sendGameMessage("Profile '" + currentProfile + "' recorded with " + items.size() + " items.");
+
+		// Update the panel with the new items
+		if (panel != null) {
+			SwingUtilities.invokeLater(() -> {
+				String itemIds = items.stream()
+						.map(String::valueOf)
+						.collect(Collectors.joining(", "));
+				panel.updateItemIds(itemIds);
+			});
+		}
 	}
 
 	private void executeSwitch() {
@@ -164,6 +178,15 @@ public class oAIOSwapperPlugin extends Plugin
 							widgetId,                 // param1
 							2                        // option (2 is the option ID for "Wear")
 					);
+
+					// Add delay between switches if configured
+					if (config.switchDelay() > 0) {
+						try {
+							Thread.sleep(config.switchDelay());
+						} catch (InterruptedException e) {
+							Thread.currentThread().interrupt();
+						}
+					}
 				}
 			}
 		}
@@ -171,18 +194,13 @@ public class oAIOSwapperPlugin extends Plugin
 		MiscUtilities.sendGameMessage("Switched to profile: " + currentProfile);
 	}
 
-
-	private void loadProfiles()
-	{
+	private void loadProfiles() {
 		String profileData = configManager.getConfiguration(oAIOSwapperConfig.GROUP, "profiles");
-		if (profileData != null && !profileData.isEmpty())
-		{
+		if (profileData != null && !profileData.isEmpty()) {
 			String[] profileEntries = profileData.split(";");
-			for (String entry : profileEntries)
-			{
+			for (String entry : profileEntries) {
 				String[] parts = entry.split(":");
-				if (parts.length == 2)
-				{
+				if (parts.length == 2) {
 					String name = parts[0];
 					List<Integer> items = Arrays.stream(parts[1].split(","))
 							.map(Integer::parseInt)
@@ -190,15 +208,20 @@ public class oAIOSwapperPlugin extends Plugin
 					profiles.put(name, items);
 				}
 			}
+
+			// Load the previously selected profile
+			String selectedProfile = config.selectedProfile();
+			if (selectedProfile != null && !selectedProfile.isEmpty()) {
+				currentProfile = selectedProfile;
+			}
+
 			MiscUtilities.sendGameMessage("Loaded " + profiles.size() + " gear profiles");
 		}
 	}
 
-	private void saveProfiles()
-	{
+	public void saveProfiles() {
 		StringBuilder sb = new StringBuilder();
-		for (Map.Entry<String, List<Integer>> entry : profiles.entrySet())
-		{
+		for (Map.Entry<String, List<Integer>> entry : profiles.entrySet()) {
 			sb.append(entry.getKey())
 					.append(":")
 					.append(entry.getValue().stream()
@@ -207,36 +230,40 @@ public class oAIOSwapperPlugin extends Plugin
 					.append(";");
 		}
 		configManager.setConfiguration(oAIOSwapperConfig.GROUP, "profiles", sb.toString());
+
+		// Save the currently selected profile
+		configManager.setConfiguration(oAIOSwapperConfig.GROUP, "selectedProfile", currentProfile);
 	}
 
-	public void startRecording(String profileName)
-	{
+	public void startRecording(String profileName) {
 		currentProfile = profileName;
 		isRecording = true;
-		MiscUtilities.sendGameMessage("Started recording profile: " + profileName);
+		MiscUtilities.sendGameMessage("Recording profile: " + profileName);
 	}
 
-	public void stopRecording()
-	{
-		isRecording = false;
-		MiscUtilities.sendGameMessage("Stopped recording profile: " + currentProfile);
-		currentProfile = "";
-	}
-
-	public Map<String, List<Integer>> getProfiles()
-	{
+	public Map<String, List<Integer>> getProfiles() {
 		return profiles;
 	}
 
-	public void deleteProfile(String name)
-	{
+	public void deleteProfile(String name) {
 		profiles.remove(name);
+		if (currentProfile.equals(name)) {
+			currentProfile = "";
+		}
 		saveProfiles();
 		MiscUtilities.sendGameMessage("Deleted profile: " + name);
 	}
 
-	public void setCurrentProfile(String name)
-	{
+	public void setCurrentProfile(String name) {
 		currentProfile = name;
+		configManager.setConfiguration(oAIOSwapperConfig.GROUP, "selectedProfile", name);
+	}
+
+	// Add this method to support the panel's item ID updates
+	public void updateProfileItems(String profileName, List<Integer> items) {
+		if (profileName != null && !profileName.isEmpty()) {
+			profiles.put(profileName, items);
+			saveProfiles();
+		}
 	}
 }

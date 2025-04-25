@@ -1,170 +1,228 @@
 package com.theplug.kotori.oaioswapper;
 
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.PluginPanel;
+import net.runelite.client.config.Keybind;
 
 import javax.inject.Inject;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.image.BufferedImage;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 public class oAIOSwapperPanel extends PluginPanel
 {
     private final oAIOSwapperPlugin plugin;
     private final oAIOSwapperConfig config;
-    private final ItemManager itemManager;
 
-    private final JComboBox<String> profileSelector;
-    private final JPanel profilePanel;
-    private final JPanel itemsContainer;
+    private final JComboBox<String> profileDropdown;
+    private final JTextArea itemIdsInput;
+    private final JButton hotkeyButton;
+    private final JButton createProfileButton;
+    private final JButton saveButton;
+    private final JButton deleteButton;
+    private final JButton saveEquipmentButton;
 
     @Inject
-    public oAIOSwapperPanel(oAIOSwapperPlugin plugin, oAIOSwapperConfig config, ItemManager itemManager)
+    public oAIOSwapperPanel(oAIOSwapperPlugin plugin, oAIOSwapperConfig config)
     {
-        super(false);
         this.plugin = plugin;
         this.config = config;
-        this.itemManager = itemManager;
 
-        setLayout(new BorderLayout());
-        setBackground(ColorScheme.DARK_GRAY_COLOR);
+        setBorder(new EmptyBorder(10, 10, 10, 10));
+        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 
-        profilePanel = new JPanel(new GridBagLayout());
+        // Profile Dropdown
+        JPanel profilePanel = new JPanel(new BorderLayout());
         profilePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        profilePanel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        profileDropdown = new JComboBox<>();
+        profileDropdown.setFocusable(false);
+        profileDropdown.setMaximumSize(new Dimension(PANEL_WIDTH - 20, 25));
 
-        GridBagConstraints c = new GridBagConstraints();
-        c.fill = GridBagConstraints.HORIZONTAL;
-        c.weightx = 1;
-        c.gridx = 0;
-        c.gridy = 0;
+        JLabel profileLabel = new JLabel("Profile:");
+        profileLabel.setForeground(Color.WHITE);
+        profilePanel.add(profileLabel, BorderLayout.NORTH);
+        profilePanel.add(profileDropdown, BorderLayout.CENTER);
+        add(profilePanel);
+        add(Box.createRigidArea(new Dimension(0, 10)));
 
-        profileSelector = new JComboBox<>();
-        profileSelector.setFocusable(false);
-        profileSelector.addActionListener(e -> updateItemsPanel());
-        profilePanel.add(profileSelector, c);
+        // Item IDs TextArea
+        JPanel textAreaPanel = new JPanel(new BorderLayout());
+        textAreaPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        itemIdsInput = new JTextArea(5, 20);
+        itemIdsInput.setLineWrap(true);
+        itemIdsInput.setWrapStyleWord(true);
+        itemIdsInput.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
+        itemIdsInput.setForeground(Color.WHITE);
+        JScrollPane scrollPane = new JScrollPane(itemIdsInput);
+        scrollPane.setMaximumSize(new Dimension(PANEL_WIDTH - 20, 80));
 
-        JPanel buttonPanel = new JPanel(new GridLayout(1, 3, 5, 0));
-        buttonPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        JLabel itemLabel = new JLabel("Item IDs (comma-separated):");
+        itemLabel.setForeground(Color.WHITE);
+        textAreaPanel.add(itemLabel, BorderLayout.NORTH);
+        textAreaPanel.add(scrollPane, BorderLayout.CENTER);
+        add(textAreaPanel);
+        add(Box.createRigidArea(new Dimension(0, 10)));
 
-        JButton newProfile = new JButton("New");
-        newProfile.setFocusable(false);
-        newProfile.addActionListener(e -> createNewProfile());
+        // Hotkey Button
+        JPanel hotkeyPanel = new JPanel(new BorderLayout());
+        hotkeyPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        hotkeyButton = new JButton("Set Hotkey: " + config.hotkey().toString());
+        hotkeyButton.setMaximumSize(new Dimension(PANEL_WIDTH - 20, 25));
+        hotkeyButton.addActionListener(e -> startHotkeyInput());
 
-        JButton recordButton = new JButton("Record");
-        recordButton.setFocusable(false);
-        recordButton.addActionListener(e -> {
-            String profileName = (String) profileSelector.getSelectedItem();
-            if (profileName != null)
+        JLabel hotkeyLabel = new JLabel("Hotkey:");
+        hotkeyLabel.setForeground(Color.WHITE);
+        hotkeyPanel.add(hotkeyLabel, BorderLayout.NORTH);
+        hotkeyPanel.add(hotkeyButton, BorderLayout.CENTER);
+        add(hotkeyPanel);
+        add(Box.createRigidArea(new Dimension(0, 10)));
+
+        // Buttons Panel
+        JPanel buttonsPanel = new JPanel(new GridLayout(2, 2, 5, 5));
+        buttonsPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+
+        createProfileButton = new JButton("Create New");
+        saveButton = new JButton("Save");
+        deleteButton = new JButton("Delete");
+        saveEquipmentButton = new JButton("Save equipment as swap");
+
+        createProfileButton.addActionListener(e -> createNewProfile());
+        saveButton.addActionListener(e -> saveCurrentProfile());
+        deleteButton.addActionListener(e -> deleteCurrentProfile());
+        saveEquipmentButton.addActionListener(e -> saveCurrentEquipment());
+
+        buttonsPanel.add(createProfileButton);
+        buttonsPanel.add(saveButton);
+        buttonsPanel.add(deleteButton);
+        buttonsPanel.add(saveEquipmentButton);
+
+        add(buttonsPanel);
+
+        // Profile dropdown listener
+        profileDropdown.addActionListener(e -> {
+            String selected = (String) profileDropdown.getSelectedItem();
+            if (selected != null)
             {
-                if (recordButton.getText().equals("Record"))
-                {
-                    plugin.startRecording(profileName);
-                    recordButton.setText("Stop");
-                }
-                else
-                {
-                    plugin.stopRecording();
-                    recordButton.setText("Record");
-                    updateItemsPanel();
-                }
+                plugin.setCurrentProfile(selected);
+                loadProfileData(selected);
             }
         });
 
-        JButton deleteProfile = new JButton("Delete");
-        deleteProfile.setFocusable(false);
-        deleteProfile.addActionListener(e -> {
-            String profileName = (String) profileSelector.getSelectedItem();
-            if (profileName != null)
-            {
-                plugin.deleteProfile(profileName);
-                updateProfileSelector();
-            }
-        });
+        // Load initial profiles
+        loadProfiles();
+    }
 
-        buttonPanel.add(newProfile);
-        buttonPanel.add(recordButton);
-        buttonPanel.add(deleteProfile);
+    private void startHotkeyInput()
+    {
+        hotkeyButton.setText("Press any key...");
+        hotkeyButton.setForeground(Color.WHITE);
+        // The actual key listening is handled by the plugin's KeyManager
+    }
 
-        c.gridy++;
-        profilePanel.add(buttonPanel, c);
+    private void loadProfiles()
+    {
+        Map<String, List<Integer>> profiles = plugin.getProfiles();
+        profileDropdown.removeAllItems();
+        for (String profile : profiles.keySet())
+        {
+            profileDropdown.addItem(profile);
+        }
 
-        itemsContainer = new JPanel();
-        itemsContainer.setLayout(new DynamicGridLayout(0, 1, 0, 3));
-        itemsContainer.setBackground(ColorScheme.DARK_GRAY_COLOR);
+        String selectedProfile = config.selectedProfile();
+        if (selectedProfile != null && !selectedProfile.isEmpty())
+        {
+            profileDropdown.setSelectedItem(selectedProfile);
+            loadProfileData(selectedProfile);
+        }
+    }
 
-        JScrollPane scrollPane = new JScrollPane(itemsContainer);
-        scrollPane.setBackground(ColorScheme.DARK_GRAY_COLOR);
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-
-        add(profilePanel, BorderLayout.NORTH);
-        add(scrollPane, BorderLayout.CENTER);
-
-        updateProfileSelector();
+    private void loadProfileData(String profileName)
+    {
+        Map<String, List<Integer>> profiles = plugin.getProfiles();
+        List<Integer> items = profiles.get(profileName);
+        if (items != null)
+        {
+            String itemIds = items.stream()
+                    .map(String::valueOf)
+                    .collect(java.util.stream.Collectors.joining(", "));
+            itemIdsInput.setText(itemIds);
+        }
+        else
+        {
+            itemIdsInput.setText("");
+        }
     }
 
     private void createNewProfile()
     {
-        String name = JOptionPane.showInputDialog(this,
-                "Enter profile name:",
-                "New Profile",
-                JOptionPane.PLAIN_MESSAGE);
-
+        String name = JOptionPane.showInputDialog(this, "Enter profile name:");
         if (name != null && !name.isEmpty())
         {
-            plugin.getProfiles().putIfAbsent(name, List.of());
-            updateProfileSelector();
-            profileSelector.setSelectedItem(name);
+            profileDropdown.addItem(name);
+            profileDropdown.setSelectedItem(name);
+            plugin.setCurrentProfile(name);
+            itemIdsInput.setText("");
         }
     }
 
-    private void updateProfileSelector()
+    private void saveCurrentProfile()
     {
-        profileSelector.removeAllItems();
-        for (String profile : plugin.getProfiles().keySet())
+        String currentProfile = (String) profileDropdown.getSelectedItem();
+        if (currentProfile != null && !currentProfile.isEmpty())
         {
-            profileSelector.addItem(profile);
+            List<Integer> items = java.util.Arrays.stream(itemIdsInput.getText().split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .map(Integer::parseInt)
+                    .collect(java.util.stream.Collectors.toList());
+
+            plugin.getProfiles().put(currentProfile, items);
+            plugin.saveProfiles();
+            loadProfiles();
         }
     }
 
-    private void updateItemsPanel()
+    private void deleteCurrentProfile()
     {
-        itemsContainer.removeAll();
-
-        String selectedProfile = (String) profileSelector.getSelectedItem();
-        if (selectedProfile != null)
+        String currentProfile = (String) profileDropdown.getSelectedItem();
+        if (currentProfile != null)
         {
-            List<Integer> items = plugin.getProfiles().get(selectedProfile);
-            if (items != null)
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "Are you sure you want to delete profile: " + currentProfile + "?",
+                    "Confirm Delete", JOptionPane.YES_NO_OPTION);
+
+            if (confirm == JOptionPane.YES_OPTION)
             {
-                for (Integer itemId : items)
-                {
-                    JPanel itemPanel = new JPanel();
-                    itemPanel.setLayout(new BorderLayout());
-                    itemPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-                    itemPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
-
-                    BufferedImage icon = itemManager.getImage(itemId);
-                    JLabel iconLabel = new JLabel(new ImageIcon(icon));
-
-                    JLabel nameLabel = new JLabel(itemManager.getItemComposition(itemId).getName());
-                    nameLabel.setForeground(Color.WHITE);
-
-                    itemPanel.add(iconLabel, BorderLayout.WEST);
-                    itemPanel.add(nameLabel, BorderLayout.CENTER);
-
-                    itemsContainer.add(itemPanel);
-                }
+                plugin.deleteProfile(currentProfile);
+                loadProfiles();
             }
         }
+    }
 
-        itemsContainer.revalidate();
-        itemsContainer.repaint();
+    private void saveCurrentEquipment()
+    {
+        String currentProfile = (String) profileDropdown.getSelectedItem();
+        if (currentProfile != null && !currentProfile.isEmpty())
+        {
+            plugin.startRecording(currentProfile);
+        }
+    }
+
+    public void updateItemIds(String itemIds)
+    {
+        SwingUtilities.invokeLater(() -> {
+            itemIdsInput.setText(itemIds);
+        });
+    }
+
+    public void updateHotkeyText(String hotkeyText)
+    {
+        SwingUtilities.invokeLater(() -> {
+            hotkeyButton.setText("Set Hotkey: " + hotkeyText);
+        });
     }
 }

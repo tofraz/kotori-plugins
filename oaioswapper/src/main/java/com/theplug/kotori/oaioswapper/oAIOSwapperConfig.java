@@ -42,4 +42,15 @@ public interface oAIOSwapperConfig extends Config
 	{
 		return "";
 	}
+
+	@ConfigItem(
+			keyName = "selectedProfile",
+			name = "Selected Profile",
+			description = "Currently selected gear profile",
+			hidden = true
+	)
+	default String selectedProfile()
+	{
+		return "";
+	}
 }
