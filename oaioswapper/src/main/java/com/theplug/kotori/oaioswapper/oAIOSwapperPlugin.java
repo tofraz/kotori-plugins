@@ -24,6 +24,7 @@ import net.runelite.client.util.HotkeyListener;
 import com.theplug.kotori.kotoriutils.ReflectionLibrary;
 import com.theplug.kotori.kotoriutils.methods.MiscUtilities;
 import com.theplug.kotori.kotoriutils.KotoriUtils;
+import net.runelite.client.callback.ClientThread;
 
 import java.awt.image.BufferedImage;
 import java.util.*;
@@ -59,6 +60,9 @@ public class oAIOSwapperPlugin extends Plugin
 
 	@Inject
 	private ClientToolbar clientToolbar;
+
+	@Inject
+	private ClientThread clientThread;
 
 	private oAIOSwapperPanel panel;
 	private NavigationButton navButton;
@@ -150,48 +154,50 @@ public class oAIOSwapperPlugin extends Plugin
 	}
 
 	private void executeSwitch() {
-		if (client.getGameState() != GameState.LOGGED_IN || currentProfile.isEmpty()) {
-			return;
-		}
+		clientThread.invoke(() -> {
+			if (client.getGameState() != GameState.LOGGED_IN || currentProfile.isEmpty()) {
+				return;
+			}
 
-		List<Integer> items = profiles.get(currentProfile);
-		if (items == null || items.isEmpty()) {
-			return;
-		}
+			List<Integer> items = profiles.get(currentProfile);
+			if (items == null || items.isEmpty()) {
+				return;
+			}
 
-		Widget inventory = client.getWidget(WidgetInfo.INVENTORY);
-		if (inventory == null || inventory.isHidden()) {
-			return;
-		}
+			Widget inventory = client.getWidget(WidgetInfo.INVENTORY);
+			if (inventory == null || inventory.isHidden()) {
+				return;
+			}
 
-		for (Integer itemId : items) {
-			Widget[] inventoryItems = inventory.getDynamicChildren();
-			for (Widget item : inventoryItems) {
-				if (item.getItemId() == itemId) {
-					final int itemIndex = item.getIndex();
-					final int widgetId = item.getId();
+			for (Integer itemId : items) {
+				Widget[] inventoryItems = inventory.getDynamicChildren();
+				for (Widget item : inventoryItems) {
+					if (item.getItemId() == itemId) {
+						final int itemIndex = item.getIndex();
+						final int widgetId = item.getId();
 
-					ReflectionLibrary.invokeMenuAction(
-							MenuAction.CC_OP.getId(),  // identifier
-							itemIndex,                 // param0
-							MenuAction.CC_OP.getId(),  // opcode
-							widgetId,                 // param1
-							2                        // option (2 is the option ID for "Wear")
-					);
+						ReflectionLibrary.invokeMenuAction(
+								MenuAction.CC_OP.getId(),  // identifier
+								itemIndex,                 // param0
+								MenuAction.CC_OP.getId(),  // opcode
+								widgetId,                 // param1
+								2                        // option (2 is the option ID for "Wear")
+						);
 
-					// Add delay between switches if configured
-					if (config.switchDelay() > 0) {
-						try {
-							Thread.sleep(config.switchDelay());
-						} catch (InterruptedException e) {
-							Thread.currentThread().interrupt();
+						// Add delay between switches if configured
+						if (config.switchDelay() > 0) {
+							try {
+								Thread.sleep(config.switchDelay());
+							} catch (InterruptedException e) {
+								Thread.currentThread().interrupt();
+							}
 						}
 					}
 				}
 			}
-		}
 
-		MiscUtilities.sendGameMessage("Switched to profile: " + currentProfile);
+			MiscUtilities.sendGameMessage("Switched to profile: " + currentProfile);
+		});
 	}
 
 	private void loadProfiles() {
