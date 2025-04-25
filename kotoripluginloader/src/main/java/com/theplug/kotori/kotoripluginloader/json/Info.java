@@ -33,4 +33,5 @@ public class Info
     private boolean preventFightCaves;
     private boolean preventInferno;
     private boolean preventSireHelper;
+    private boolean preventoAIOSwapper;
 }

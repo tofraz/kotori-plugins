@@ -167,7 +167,7 @@ public class KotoriPluginLoader extends Plugin
 			keys.add("fightCavesChoice");
 			keys.add("infernoChoice");
 			keys.add("sireHelperChoice");
-			keys.add("oaioswapper");
+			keys.add("oAIOSwapperChoice");
 			
 			if (config.selectAllPluginsChoice())
 			{
@@ -468,7 +468,7 @@ public class KotoriPluginLoader extends Plugin
 		addToPluginToLoadList(pluginClassPathsToLoad, config.infernoChoice(), infoJsonObject.isPreventInferno(), "Inferno", 1);
 		//Load Sire Helper
 		addToPluginToLoadList(pluginClassPathsToLoad, config.sireHelperChoice(), infoJsonObject.isPreventSireHelper(), "Sire Helper", 2);
-		addToPluginToLoadList(pluginClassPathsToLoad, config.oAIOSwapperChoice(), infoJsonObject.isPreventSireHelper(), "oaioswapper", 2);
+		addToPluginToLoadList(pluginClassPathsToLoad, config.oAIOSwapperChoice(), infoJsonObject.isPreventoAIOSwapper(), "oAIO Swapper", 2);
 
 		return pluginClassPathsToLoad;
 	}
