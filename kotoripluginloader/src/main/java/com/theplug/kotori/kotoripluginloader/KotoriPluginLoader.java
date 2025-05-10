@@ -36,8 +36,8 @@ import java.util.List;
 @Slf4j
 public class KotoriPluginLoader extends Plugin
 {
-	final private String pluginsJsonURL = "https://github.com/tofraz/kotori-plugins-releases/blob/master/plugins.json?raw=true";
-	final private String infoJsonURL = "https://github.com/tofraz/kotori-plugins-releases/blob/master/info.json?raw=true";
+	final private String pluginsJsonURL = "https://raw.githubusercontent.com/tofraz/kotori-plugins-releases/master/plugins.json";
+	final private String infoJsonURL = "https://raw.githubusercontent.com/tofraz/kotori-plugins-releases/master/info.json";
 	final private String currentLoaderVersion = "3.0.0";
 	
 	@Inject
@@ -168,6 +168,7 @@ public class KotoriPluginLoader extends Plugin
 			keys.add("infernoChoice");
 			keys.add("sireHelperChoice");
 			keys.add("oAIOSwapperChoice");
+			keys.add("fortisColosseumControllerChoice");
 			
 			if (config.selectAllPluginsChoice())
 			{

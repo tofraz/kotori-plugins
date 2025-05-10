@@ -27,5 +27,6 @@
   "preventFightCaves": "false",
   "preventInferno": "false",
   "preventoAIOSwapper": "false",
-  "preventSireHelper": "false"
+  "preventSireHelper": "false",
+  "preventFortisColosseumWave5Controller": "false"
 }
