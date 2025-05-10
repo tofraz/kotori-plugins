@@ -38,7 +38,7 @@ import java.net.URL;
 )
 public class KotoriUtils extends Plugin {
 
-    private final String hooksFileURL = "https://raw.githubusercontent.com/tofraz/kotori-plugins-releases/master/hooks.json";
+    private final String hooksFileURL = "https://github.com/tofraz/kotori-plugins-releases/blob/master/hooks.json?raw=true";
     @Inject
     private Client client;
     @Inject

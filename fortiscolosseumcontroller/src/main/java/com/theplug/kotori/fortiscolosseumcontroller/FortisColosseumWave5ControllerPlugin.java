@@ -2,6 +2,8 @@ package com.theplug.kotori.fortiscolosseumcontroller; // Adjust package as neede
 
 import com.google.inject.Provides;
 import javax.inject.Inject;
+import javax.inject.Singleton;
+
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -33,6 +35,7 @@ import com.theplug.kotori.kotoriutils.KotoriUtils;
 import java.time.Instant;
 
 @Slf4j
+@Singleton
 @PluginDescriptor(
 		name = "Fortis Colosseum Wave 5 Controller",
 		description = "Automates interactions after Fortis Colosseum Wave 5 completion.",
