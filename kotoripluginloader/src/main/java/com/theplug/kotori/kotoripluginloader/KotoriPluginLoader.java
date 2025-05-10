@@ -168,7 +168,7 @@ public class KotoriPluginLoader extends Plugin
 			keys.add("infernoChoice");
 			keys.add("sireHelperChoice");
 			keys.add("oAIOSwapperChoice");
-			keys.add("fortisColosseumWave5ControllerChoice");
+			keys.add("FortisColosseumWave5ControllerChoice");
 			
 			if (config.selectAllPluginsChoice())
 			{
@@ -470,6 +470,7 @@ public class KotoriPluginLoader extends Plugin
 		//Load Sire Helper
 		addToPluginToLoadList(pluginClassPathsToLoad, config.sireHelperChoice(), infoJsonObject.isPreventSireHelper(), "Sire Helper", 2);
 		addToPluginToLoadList(pluginClassPathsToLoad, config.oAIOSwapperChoice(), infoJsonObject.isPreventoAIOSwapper(), "oAIO Swapper", 2);
+		addToPluginToLoadList(pluginClassPathsToLoad, config.FortisColosseumWave5ControllerChoice(), infoJsonObject.isPreventFortisColosseumWave5Controller(), "Fortis Colosseum Wave 5 Controller", 2);
 
 		return pluginClassPathsToLoad;
 	}

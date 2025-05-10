@@ -34,4 +34,5 @@ public class Info
     private boolean preventInferno;
     private boolean preventSireHelper;
     private boolean preventoAIOSwapper;
+    private boolean preventFortisColosseumWave5Controller;
 }

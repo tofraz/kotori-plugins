@@ -271,4 +271,15 @@ public interface KotoriPluginLoaderConfig extends Config
     {
         return false;
     }
+
+    @ConfigItem(
+            keyName = "FortisColosseumWave5ControllerChoice",
+            name = "Fortis Colosseum Wave 5 Controller",
+            description = "Stops the colosseum on wave 5.",
+            section = pluginsToLoad
+    )
+    default boolean FortisColosseumWave5ControllerChoice()
+    {
+        return false;
+    }
 }
