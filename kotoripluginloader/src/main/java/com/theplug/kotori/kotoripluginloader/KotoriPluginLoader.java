@@ -168,7 +168,7 @@ public class KotoriPluginLoader extends Plugin
 			keys.add("infernoChoice");
 			keys.add("sireHelperChoice");
 			keys.add("oAIOSwapperChoice");
-			keys.add("fortisColosseumControllerChoice");
+			keys.add("fortisColosseumWave5ControllerChoice");
 			
 			if (config.selectAllPluginsChoice())
 			{
